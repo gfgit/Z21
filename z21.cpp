@@ -1330,6 +1330,9 @@ byte z21Class::getLocalBcFlag(unsigned long flag)
 // delete the stored IP-Address
 void z21Class::clearIP(byte pos)
 {
+  if (ActIP[pos].client && notifyz21ClientRemoved)
+    notifyz21ClientRemoved(ActIP[pos].client);
+
   ActIP[pos].client = 0;
   ActIP[pos].BCFlag = 0;
   ActIP[pos].time = 0;
@@ -1387,7 +1390,8 @@ byte z21Class::findEEPROMBCFlag(byte IPHash)
 //--------------------------------------------------------------------------------------------
 byte z21Class::addIPToSlot(byte client, byte BCFlag)
 {
-  byte Slot = z21clientMAX;
+  byte Slot = 0;
+  byte maxTime = 255;
 
   for (byte i = 0; i < z21clientMAX; i++)
   {
@@ -1402,9 +1406,20 @@ byte z21Class::addIPToSlot(byte client, byte BCFlag)
       }
       return ActIP[i].BCFlag; // BC Flag 4. Byte Rückmelden
     }
-    else if (ActIP[i].time == 0 && Slot == z21clientMAX)
+    else if (ActIP[i].time < maxTime)
+    {
+      // Replace oldest client (so client with lowest time left)
+      // If we beat previous selected client, update Slot
+      // Free slot will always win (time = 0)
       Slot = i;
+      maxTime = ActIP[i].time;
+    }
   }
+
+  // If we are overwriting, clear old client first
+  if (ActIP[Slot].client != 0)
+    clearIP(Slot);
+
   ActIP[Slot].client = client;
   ActIP[Slot].time = z21ActTimeIP;
   setPower(Railpower); // inform the client with last power state

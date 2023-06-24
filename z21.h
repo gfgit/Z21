@@ -266,6 +266,8 @@ extern "C"
 
   extern uint8_t notifyz21ClientHash(uint8_t client) __attribute__((weak));
 
+  extern void notifyz21ClientRemoved(uint8_t client) __attribute__((weak));
+
 #if defined(__cplusplus)
 }
 #endif
