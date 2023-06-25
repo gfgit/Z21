@@ -1,5 +1,5 @@
 /*
-  z21.h - library for Z21 mobile protocoll
+  z21.h - library for Z21 mobile protocol
   Copyright (c) 2013-2022 Philipp Gahtow  All right reserved.
 
   ROCO Z21 LAN Protocol for Arduino.
@@ -7,13 +7,13 @@
   Notice:
     - analyse the data and give back the content and a answer
 
-  Grundlage: Z21 LAN Protokoll Spezifikation V1.12
+  Based on: Z21 LAN Protokoll Spezifikation V1.12
 
-  Änderungen:
-    - 23.09.15 Anpassung LAN_LOCONET_DETECTOR
-               Fehlerbeseitigung bei der LAN Prüfsumme
-               Anpassung LAN_LOCONET_DISPATCH
-    - 14.07.16 add S88 Gruppenindex for request
+  Changelog:
+    - 23.09.15 Customization LAN_LOCONET_DETECTOR
+               Troubleshooting the LAN checksum
+               Customization LAN_LOCONET_DISPATCH
+    - 14.07.16 add S88 Group index for request
     - 22.08.16 add POM read notify
     - 19.12.16 add CV return value for Service Mode
     - 27.12.16 add CV no ACK and CV Short Circuit
@@ -28,8 +28,9 @@
     - 04.02.18 fix LocoNet dispatch
     - 22.10.18 add loco busy return
     - 02.11.18 adjust returnLocoStateFull with addition non broadcast when requestion only
-  information
-    - 04.11.18 fix EthSend handel of message with client == 0 and Broadcast with client and without
+               information
+    - 04.11.18 fix EthSend handling of message with client == 0 and Broadcast with client
+               and without
     - 10.05.20 add message LAN_GET_LOCOMODE and LAN_GET_TURNOUTMODE
     - 04.08.20 fix POM set CV result
     - 17.12.20 add support for ESP32 and adjust ESP8266
@@ -38,11 +39,12 @@
     - 21.03.21 add request for client identification (ip-hash) and store this plus BC-Flag in EEPROM
     - 30.03.21 fix connecting problem WDP with reporting railpower when request status
     - 11.06.21 add NVS on ESP32 to store EEPROM data
-    - 30.09.21 fix storage data in Ethsend with correct datalength; fix problem with
-  LAN_X_GET_TURNOUT_INFO to return feedbacks also when LAN_X_SET_TURNOUT is called!
+    - 30.09.21 fix storage data in EthSend with correct datalength;
+               fix problem with LAN_X_GET_TURNOUT_INFO to return feedbacks also
+               when LAN_X_SET_TURNOUT is called!
     - 06.11.21 fix EEPROM store BCFlags with IP Hash value. Use EEPROM value from 512 up to 736.
-    - 16.11.21 add sending data to client only with "Z21bcNone", if client set and BC-Flag set (not
-  "Z21bcNone") then don't inform the client!
+    - 16.11.21 add sending data to client only with "Z21bcNone", if client set and BC-Flag set
+               (not "Z21bcNone") then don't inform the client!
     - 14.12.21 limit max packet size for Z21 LocoNet tunnel data to 20 bytes!
     - 03.02.22 fix setCANDetector() data values with 16bit
     - 10.02.22 add LAN_X_CV_POM_ACCESSORY statements
@@ -81,28 +83,32 @@ typedef uint8_t byte;
 #endif
 
 //**************************************************************
-// Firmware-Version der Z21:
+// Firmware Version of the Z21:
 #define z21FWVersionMSB 0x01
 #define z21FWVersionLSB 0x42
+
 /*
-HwType:
-#define D_HWT_Z21_OLD 0x00000200 // „schwarze Z21” (Hardware-Variante ab 2012)
-#define D_HWT_Z21_NEW 0x00000201 // „schwarze Z21”(Hardware-Variante ab 2013)
-#define D_HWT_SMARTRAIL 0x00000202 // SmartRail (ab 2012)
-#define D_HWT_z21_SMALL 0x00000203 // „weiße z21” Starterset-Variante (ab 2013)
-#define D_HWT_z21_START 0x00000204 // „z21 start” Starterset-Variante (ab 2016)
-#define D_HWT_Z21_XL 0x00000211 // 10870 „Z21 XL Series” (ab 2020)
-#define D_HWT_SINGLE_BOOSTER 0x00000205 // 10806 „Z21 Single Booster” (zLink)
-#define D_HWT_DUAL_BOOSTER 0x00000206 // 10807 „Z21 Dual Booster” (zLink)
-#define D_HWT_Z21_SWITCH_DECODER 0x00000301 // 10836 „Z21 SwitchDecoder” (zLink)
-#define D_HWT_Z21_SIGNAL_DECODER 0x00000302 // 10836 „Z21 SignalDecoder” (zLink)
+// Hardware Types:
+#define D_HWT_Z21_OLD            0x00000200 // "black Z21" (Hardware Variant from 2012)
+#define D_HWT_Z21_NEW            0x00000201 // "black Z21" (Hardware Variant from 2013)
+#define D_HWT_SMARTRAIL          0x00000202 // SmartRail (from 2012)
+#define D_HWT_z21_SMALL          0x00000203 // "white Z21" Starter Set Variant (from 2013)
+#define D_HWT_z21_START          0x00000204 // "z21 start" Starter Set Variant (from 2016)
+#define D_HWT_Z21_XL             0x00000211 // 10870 "Z21 XL Series" (from 2020)
+#define D_HWT_SINGLE_BOOSTER     0x00000205 // 10806 "Z21 Single Booster" (zLink)
+#define D_HWT_DUAL_BOOSTER       0x00000206 // 10807 "Z21 Dual Booster" (zLink)
+#define D_HWT_Z21_SWITCH_DECODER 0x00000301 // 10836 "Z21 SwitchDecoder" (zLink)
+#define D_HWT_Z21_SIGNAL_DECODER 0x00000302 // 10836 "Z21 SignalDecoder" (zLink)
 */
-// Hardware-Typ: 0x00000211 // 10870 „Z21 XL Series” (ab 2020)
+
+// Hardware Type: 0x00000211 // 10870 "Z21 XL Series" (from 2020)
 #define z21HWTypeMSB 0x02
 #define z21HWTypeLSB 0x11
-// Seriennummer inside EEPROM:
+
+// Serial number inside EEPROM:
 #define CONFz21SnMSB 0 // 0x01
 #define CONFz21SnLSB 1 // 0xE8
+
 //**************************************************************
 // Store Z21 configuration inside EEPROM:
 #define CONF1STORE      50    //(10x Byte) - Prog, RailCom, etc.
@@ -111,20 +117,20 @@ HwType:
 
 //--------------------------------------------------------------
 // certain global XPressnet status indicators:
-#define csNormal          0x00 // Normal Operation Resumed ist eingeschaltet
-#define csEmergencyStop   0x01 // Der Nothalt ist eingeschaltet
-#define csTrackVoltageOff 0x02 // Die Gleisspannung ist abgeschaltet
-#define csShortCircuit    0x04 // Kurzschluss
-#define csServiceMode     0x08 // Der Programmiermodus ist aktiv - Service Mode
+#define csNormal          0x00 // Normal Operation Resumed is on
+#define csEmergencyStop   0x01 // The emergency stop is switched on
+#define csTrackVoltageOff 0x02 // Track voltage is switched off
+#define csShortCircuit    0x04 // Short Circuit
+#define csServiceMode     0x08 // Programming mode is active - Service Mode
 // Bitmask CentralStateEx:
-#define cseHighTemperature      0x01 // zu hohe Temperatur
-#define csePowerLost            0x02 // zu geringe Eingangsspannung
-#define cseShortCircuitExternal 0x04 // am externen Booster-Ausgang
-#define cseShortCircuitInternal 0x08 // am Hauptgleis oder Programmiergleis
+#define cseHighTemperature      0x01 // Temperature is too high
+#define csePowerLost            0x02 // Input voltage that is too low
+#define cseShortCircuitExternal 0x04 // At the external booster output
+#define cseShortCircuitInternal 0x08 // On main track or on programming track
 
 //--------------------------------------------------------------
-#define z21clientMAX  30   // Speichergröße für IP-Adressen
-#define z21ActTimeIP  20   // Aktivhaltung einer IP für (sec./2)
+#define z21clientMAX  30   // Array size for IP addresses
+#define z21ActTimeIP  20   // Active status of an IP for (sec./2)
 #define z21IPinterval 2000 // interval at milliseconds
 
 // DCC Speed Steps
@@ -136,7 +142,7 @@ struct TypeActIP
 {
   byte client;  // Byte client
   byte BCFlag;  // BoadCastFlag - see Z21type.h
-  byte time;    // Zeit
+  byte time;    // Time left before cleanup
   uint16_t adr; // Loco control Adr
 };
 
@@ -147,10 +153,10 @@ class z21Class
 public:
   z21Class(void); // Constuctor
 
-  void receive(uint8_t client, uint8_t *packet); // Prüfe auf neue Ethernet Daten
+  void receive(uint8_t client, uint8_t *packet); // Check for new Ethernet data
 
-  void setPower(byte state); // Zustand Gleisspannung Melden
-  byte getPower();           // Zusand Gleisspannung ausgeben
+  void setPower(byte state); // Report track power status
+  byte getPower();           // Get track power status
 
   void setCVPOMBYTE(uint16_t CVAdr, uint8_t value); // POM write byte return
 
@@ -182,10 +188,10 @@ private:
   // Variables:
   byte Railpower;                // state of the railpower
   long z21IPpreviousMillis;      // will store last time of IP decount updated
-  TypeActIP ActIP[z21clientMAX]; // Speicherarray für IPs
+  TypeActIP ActIP[z21clientMAX]; // Storage array for IPs
 
   // Functions:
-  void returnLocoStateFull(byte client, uint16_t Adr, bool bc); // Antwort auf Statusabfrage
+  void returnLocoStateFull(byte client, uint16_t Adr, bool bc); // Response to status query
   void EthSend(byte client, unsigned int DataLen, unsigned int Header, byte *dataString,
                bool withXOR, byte BC);
   byte getLocalBcFlag(unsigned long flag); // Convert Z21 LAN BC flag to local stored flag
