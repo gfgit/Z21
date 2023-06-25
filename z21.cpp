@@ -53,7 +53,7 @@ z21Class::z21Class()
 // Functions available in Wiring sketches, this library, and other libraries
 
 //*********************************************************************************************
-// Daten ermitteln und Auswerten
+// Determine and evaluate data
 void z21Class::receive(uint8_t client, uint8_t *packet)
 {
   addIPToSlot(client, 0);
@@ -76,7 +76,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     data[2] = 0x00;
     data[3] = 0x00;
     EthSend(client, 0x08, LAN_GET_SERIAL_NUMBER, data, false,
-            Z21bcNone); // Seriennummer 32 Bit (little endian)
+            Z21bcNone); // Serial number 32 Bit (little endian)
     break;
   case LAN_GET_HWINFO:
 #if defined(SERIALDEBUG)
@@ -97,21 +97,25 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     ZDebug.println("LOGOFF");
 #endif
     clearIPSlot(client);
-    // Antwort von Z21: keine
+    // Response from Z21: none
     break;
-  case LAN_GET_CODE: // SW Feature-Umfang der Z21
-    /*#define Z21_NO_LOCK        0x00  // keine Features gesperrt
-      #define z21_START_LOCKED   0x01  // „z21 start”: Fahren und Schalten per LAN gesperrt
-      #define z21_START_UNLOCKED 0x02  // „z21 start”: alle Feature-Sperren aufgehoben */
-    data[0] = 0x00; // keine Features gesperrt
+  case LAN_GET_CODE: // SW Feature Scope of the Z21
+
+    /*
+    #define Z21_NO_LOCK        0x00 // all features permitted
+    #define z21_START_LOCKED   0x01 // "z21 start": driving and switching is blocked
+    #define z21_START_UNLOCKED 0x02 // "z21 start": driving and switching is permitted
+    */
+
+    data[0] = 0x00; // all features permitted
     EthSend(client, 0x05, LAN_GET_CODE, data, false, Z21bcNone);
     break;
   case (LAN_X_Header):
-    //---------------------- LAN X-Header BEGIN ---------------------------
+    //---------------------- LAN X-Header BEGIN --------------------------
     switch (packet[4])
     { // X-Header
     case LAN_X_GET_SETTING:
-      //---------------------- Switch BD0 BEGIN ---------------------------
+      //---------------------- Switch BD0 BEGIN --------------------------
       switch (packet[5])
       { // DB0
       case 0x21:
@@ -121,7 +125,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
         data[0] = LAN_X_GET_VERSION; // X-Header: 0x63
         data[1] = 0x21;              // DB0
         data[2] = 0x30;              // X-Bus Version
-        data[3] = 0x12;              // ID der Zentrale
+        data[3] = 0x12;              // Command station ID (0x12 = Z21 device family)
         EthSend(client, 0x09, LAN_X_Header, data, true, Z21bcNone);
         break;
       case 0x24:
@@ -129,10 +133,11 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
         data[1] = 0x22;                 // DB0
         data[2] = Railpower;            // DB1: Status
         // ZDebug.print("X_GET_STATUS ");
-        // csEmergencyStop  0x01 // Der Nothalt ist eingeschaltet
-        // csTrackVoltageOff  0x02 // Die Gleisspannung ist abgeschaltet
-        // csShortCircuit  0x04 // Kurzschluss
-        // csProgrammingModeActive 0x20 // Der Programmiermodus ist aktiv
+        // csNormal          0x00 // Normal Operation Resumed is on
+        // csEmergencyStop   0x01 // The emergency stop is switched on
+        // csTrackVoltageOff 0x02 // Track voltage is switched off
+        // csShortCircuit    0x04 // Short Circuit
+        // csServiceMode     0x08 // Programming mode is active - Service Mode
         EthSend(client, 0x08, LAN_X_Header, data, true, Z21bcNone);
         break;
       case 0x80:
@@ -161,8 +166,8 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
 
         break;
       }
-      //---------------------- Switch DB0 ENDE ---------------------------
-      break; // ENDE DB0
+      //---------------------- END Switch DB0 ----------------------------
+      break; // END DB0
     case LAN_X_DCC_READ_REGISTER:
       if (packet[5] == 0x15)
       { // DB0 - SPECIAL: WLANMaus CV Read!
@@ -267,12 +272,12 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       ZDebug.print("-");
       ZDebug.println(bitRead(packet[7], 3));
 #endif
-      // bool TurnOnOff = bitRead(packet[7],3);  //Spule EIN/AUS
+      // bool TurnOnOff = bitRead(packet[7],3);  //Coil ON/OFF
       if (notifyz21Accessory)
       {
-        //                 Addresse                       Links/Rechts
+        //                 Address                       Left/Right
         notifyz21Accessory((packet[5] << 8) + packet[6], bitRead(packet[7], 0),
-                           bitRead(packet[7], 3)); // Spule EIN/AUS
+                           bitRead(packet[7], 3)); // Coil ON/OFF
       }
       // Check if Broadcast Flag is correct set up?
       bool BCset = true;
@@ -304,14 +309,15 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
         if (notifyz21AccessoryInfo((packet[5] << 8) + packet[6]) == true)
           data[3] = 0x02; // active
         else
-          data[3] = 0x01;                                           // inactive
+          data[3] = 0x01; // inactive
+
         EthSend(client, 0x09, LAN_X_Header, data, true, Z21bcNone); // BC new 23.04. !!!(old = 0)
       }
       break;
     }
     case LAN_X_SET_EXT_ACCESSORY:
     {
-// Schalten Erweiterten Zubehördecoder
+// Switch Advanced Accessory Decoder
 #if defined(SERIALDEBUG)
       ZDebug.print("X_SET_EXT_ACCESSORY RAdr.:");
       ZDebug.print((packet[5] << 8) + packet[6]);
@@ -320,15 +326,15 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
 #endif
       if (notifyz21ExtAccessory)
         notifyz21ExtAccessory((packet[5] << 8) + packet[6], packet[7]);
-      LAST_EXTACC_msg = packet[7]; // speichere letztes Kommando!
-      LAST_EXTACC_received = true; // wir haben eine EXTACC empfangen!
+      LAST_EXTACC_msg = packet[7]; // Save last command!
+      LAST_EXTACC_received = true; // We have received an EXTACC!
       setExtACCInfo((packet[5] << 8) + packet[6], packet[7]);
       break;
     }
     case LAN_X_GET_EXT_ACCESSORY_INFO:
     {
-// kann mit folgendem Kommando der letzte an einen Erweiterten Zubehördecoder übertragene Befehl
-// abgefragt werden.
+// The following command can be used to query the last command transferred to an
+// advanced accessory decoder.
 #if defined(SERIALDEBUG)
       ZDebug.print("X_EXT_ACCESSORY_INFO RAdr.:");
       ZDebug.print((packet[5] << 8) + packet[6]);
@@ -336,9 +342,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       ZDebug.println(packet[7], HEX); // DB2 Reserviert für zukünftige Erweiterungen
 #endif
       if (LAST_EXTACC_received == true)
-        setExtACCInfo((packet[5] << 8) + packet[6], LAST_EXTACC_msg); // 0x00 … Data Valid;
+        setExtACCInfo((packet[5] << 8) + packet[6], LAST_EXTACC_msg); // 0x00 ... Data Valid;
       else
-        setExtACCInfo((packet[5] << 8) + packet[6], LAST_EXTACC_msg, 0xFF); // 0xFF … Data Unknown
+        setExtACCInfo((packet[5] << 8) + packet[6], LAST_EXTACC_msg, 0xFF); // 0xFF ... Data Unknown
       break;
     }
     case LAN_X_SET_STOP:
@@ -352,7 +358,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       if (packet[5] == 0xF0)
       { // DB0
         // ZDebug.print("X_GET_LOCO_INFO: ");
-        // Antwort: LAN_X_LOCO_INFO  Adr_MSB - Adr_LSB
+        // Answer: LAN_X_LOCO_INFO  Adr_MSB - Adr_LSB
         returnLocoStateFull(client, word(packet[6] & 0x3F, packet[7]), false);
       }
       break;
@@ -363,10 +369,10 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       if ((packet[5] & 0xF0) == 0x10)
       { // DB0 => 0x1x = LAN_X_SET_LOCO_DRIVE
         // ZDebug.print("X_SET_LOCO_DRIVE ");
-        byte steps = 128;      // default value S=3; DCC 128 Fahrstufen
-        if (packet[5] == 0x12) // S=2; DCC 28 Fahrstufen
+        byte steps = 128;      // S=3; DCC 128 Speed steps (default value)
+        if (packet[5] == 0x12) // S=2; DCC 28 Speed steps
           steps = 28;
-        else if (packet[5] == 0x10) // S=0; DCC 14 Fahrstufen
+        else if (packet[5] == 0x10) // S=0; DCC 14 Speed steps
           steps = 14;
         if (notifyz21LocoSpeed)
           notifyz21LocoSpeed(word(packet[6] & 0x3F, packet[7]), packet[8], steps);
@@ -404,31 +410,31 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
         if (notifyz21LocoFkt37to44)
           notifyz21LocoFkt37to44(word(packet[6] & 0x3F, packet[7]),
                                  packet[8]); // F44 F43 F42 F41 F40 F39 F38 F37
-        return;                              // keine Rückmeldung an die LAN-Clients
+        return;                              // No feedback to the LAN clients
       }
       else if (packet[5] == 0x2B)
       { // F52 - F45
         if (notifyz21LocoFkt45to52)
           notifyz21LocoFkt45to52(word(packet[6] & 0x3F, packet[7]),
                                  packet[8]); // F52 F51 F50 F49 F48 F47 F46 F45
-        return;                              // keine Rückmeldung an die LAN-Clients
+        return;                              // No feedback to the LAN clients
       }
       else if (packet[5] == 0x50)
       { // F60 - F53
         if (notifyz21LocoFkt53to60)
           notifyz21LocoFkt53to60(word(packet[6] & 0x3F, packet[7]),
                                  packet[8]); // F60 F59 F58 F57 F56 F55 F54 F53
-        return;                              // keine Rückmeldung an die LAN-Clients
+        return;                              // No feedback to the LAN clients
       }
       else if (packet[5] == 0x51)
       { // F68 - F61
         if (notifyz21LocoFkt61to68)
           notifyz21LocoFkt61to68(word(packet[6] & 0x3F, packet[7]),
                                  packet[8]); // F68 F67 F66 F65 F64 F63 F62 F61
-        return;                              // keine Rückmeldung an die LAN-Clients
+        return;                              // No feedback to the LAN clients
       }
       returnLocoStateFull(client, word(packet[6] & 0x3F, packet[7]),
-                          true); // Rückmeldung an die LAN-Clients!
+                          true); // Feedback to the LAN clients!
       break;
     case LAN_X_SET_LOCO_BINARY_STATE:
       if (packet[5] == 0x5F)
@@ -448,7 +454,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       EthSend(client, 0x09, LAN_X_Header, data, true, Z21bcNone);
       break;
     case 0x73:
-// LAN_X_??? WLANmaus periodische Abfrage:
+// LAN_X_??? WLANmaus periodic query:
 // 0x09 0x00 0x40 0x00 0x73 0x00 0xFF 0xFF 0x00
 // length    X-Header  XNet-Msg  speed?
 #if defined(SERIALDEBUG)
@@ -472,7 +478,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       data[1] = 0x82;
       EthSend(client, 0x07, LAN_X_Header, data, true, Z21bcNone);
     }
-    //---------------------- LAN X-Header ENDE ---------------------------
+    //---------------------- END LAN X-Header ----------------------------
     break;
   case (LAN_SET_BROADCASTFLAGS):
   {
@@ -481,9 +487,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     bcflag = packet[5] | (bcflag << 8);
     bcflag = packet[4] | (bcflag << 8);
     addIPToSlot(client, getLocalBcFlag(bcflag));
-    // no inside of the protokoll, but good to have:
+    // not inside of the protocol, but good to have:
     if (notifyz21RailPower)
-      notifyz21RailPower(Railpower); // Zustand Gleisspannung Antworten
+      notifyz21RailPower(Railpower); // Send track power state
 #if defined(SERIALDEBUG)
     ZDebug.print(packet[7], BIN);
     ZDebug.print("-");
@@ -494,7 +500,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     ZDebug.print(packet[4], BIN);
     ZDebug.print(" SET_BROADCASTFLAGS: ");
     ZDebug.println(addIPToSlot(client, 0x00), BIN);
-    // 1=BC Power, Loco INFO, Trnt INFO; 2=BC Änderungen der Rückmelder am R-Bus
+    // 1=BC Power, Loco INFO, Trnt INFO; 2=BC Changes to the sensors on the R-Bus
 #endif
     break;
   }
@@ -514,9 +520,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
   }
   case (LAN_GET_LOCOMODE):
     /*
-    In der Z21 kann das Ausgabeformat (DCC, MM) pro Lok-Adresse persistent gespeichert werden.
-    Es können maximal 256 verschiedene Lok-Adressen abgelegt werden. Jede Adresse >= 256 ist
-    automatisch DCC.
+    In the Z21, the output format (DCC, MM) can be stored persistently per locomotive address.
+    A maximum of 256 different locomotive addresses can be stored. Every address >= 256
+    is automatically DCC.
     */
     data[0] = packet[4];
     data[1] = packet[5];
@@ -524,13 +530,13 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     EthSend(client, 0x07, LAN_GET_LOCOMODE, data, false, Z21bcNone);
     break;
   case (LAN_SET_LOCOMODE):
-    // nothing to replay all DCC Format
+    // nothing to reply all DCC Format
     break;
   case (LAN_GET_TURNOUTMODE):
     /*
-    In der Z21 kann das Ausgabeformat (DCC, MM) pro Funktionsdecoder-Adresse persistent gespeichert
-    werden. Es können maximal 256 verschiedene Funktionsdecoder -Adressen gespeichert werden. Jede
-    Adresse >= 256 ist automatisch DCC.
+    In the Z21, the output format (DCC, MM) can be stored persistently per function decoder address.
+    A maximum of 256 different function decoder addresses can be stored. Every Address >= 256
+    is automatically DCC.
     */
     data[0] = packet[4];
     data[1] = packet[5];
@@ -538,7 +544,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     EthSend(client, 0x07, LAN_GET_LOCOMODE, data, false, Z21bcNone);
     break;
   case (LAN_SET_TURNOUTMODE):
-    // nothing to replay all DCC Format
+    // nothing to reply all DCC Format
     break;
   case (LAN_RMBUS_GETDATA):
     if (notifyz21S88Data)
@@ -546,9 +552,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
 #if defined(SERIALDEBUG)
       ZDebug.println("RMBUS_GETDATA");
 #endif
-      // ask for group state 'Gruppenindex'
-      notifyz21S88Data(packet[4]); // normal Antwort hier nur an den anfragenden Client! (Antwort
-                                   // geht hier an alle!)
+      // ask for group state 'Group index'
+      notifyz21S88Data(packet[4]); // Normal answer here only to the requesting client!
+                                   // (Answer goes to everyone here!)
     }
     break;
   case (LAN_RMBUS_PROGRAMMODULE):
@@ -566,25 +572,26 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
   {
     uint16_t Adr = 0;
     if (packet[4] == 0x01)
-    { // RailCom-Daten für die gegebene Lokadresse anfordern
+    { // Request RailCom data for the given locomotive address
       Adr = word(packet[6], packet[5]);
     }
     if (notifyz21Railcom)
       Adr = notifyz21Railcom(); // return global Railcom Adr
-    data[0] = Adr >> 8;         // LocoAddress
-    data[1] = Adr & 0xFF;       // LocoAddress
-    data[2] = 0x00;             // UINT32 ReceiveCounter Empfangszähler in Z21
+
+    data[0] = Adr >> 8;   // LocoAddress
+    data[1] = Adr & 0xFF; // LocoAddress
+    data[2] = 0x00;       // UINT32 Receive Counter in Z21
     data[3] = 0x00;
     data[4] = 0x00;
     data[5] = 0x00;
-    data[6] = 0x00; // UINT32 ErrorCounter Empfangsfehlerzähler in Z21
+    data[6] = 0x00; // UINT32 Receive Error Counter in Z21
     data[7] = 0x00;
     data[8] = 0x00;
     data[9] = 0x00;
     /*
-    data[10] = 0x00; // UINT8 Reserved1 experimentell, siehe Anmerkung
-    data[11] = 0x00; // UINT8 Reserved2 experimentell, siehe Anmerkung
-    data[12] = 0x00; // UINT8 Reserved3 experimentell, siehe Anmerkung
+    data[10] = 0x00; // UINT8 Reserved1 experimental, see note
+    data[11] = 0x00; // UINT8 Reserved2 experimental, see note
+    data[12] = 0x00; // UINT8 Reserved3 experimental, see note
     */
     EthSend(client, 0x0E, LAN_RAILCOM_DATACHANGED, data, false, Z21bcNone);
     break;
@@ -600,7 +607,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       LNdata[i] = packet[0x04 + i];
     if (notifyz21LNSendPacket)
       notifyz21LNSendPacket(LNdata, packet[0] - 0x04);
-    // Melden an andere LAN-Client das Meldung auf LocoNet-Bus geschrieben wurde
+    // Reporting to another LAN client that message was written to LocoNet bus
     EthSend(client, packet[0], LAN_LOCONET_FROM_LAN, LNdata, false,
             Z21bcLocoNet_s); // LAN_LOCONET_FROM_LAN not to the client!
 
@@ -630,7 +637,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       ZDebug.println("LOCONET_DETECTOR Abfrage");
 #endif
       notifyz21LNdetector(client, packet[4],
-                          word(packet[6], packet[5])); // Anforderung Typ & Reportadresse
+                          word(packet[6], packet[5])); // Request Type & Report Address
     }
     break;
   case (LAN_CAN_DETECTOR):
@@ -639,8 +646,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
 #if defined(SERIALDEBUG)
       ZDebug.println("CAN_DETECTOR Abfrage");
 #endif
-      notifyz21CANdetector(client, packet[4],
-                           word(packet[6], packet[5])); // Anforderung Typ & CAN-ID
+      notifyz21CANdetector(client, packet[4], word(packet[6], packet[5])); // Request Type & CAN-ID
     }
     break;
   case (0x12): // configuration read
@@ -855,7 +861,7 @@ FSTORAGE.commit();
     {
       if (ActIP[i].time > 0)
       {
-        ActIP[i].time--; // Zeit herrunterrechnen
+        ActIP[i].time--; // Calculate down time
       }
       else
       {
@@ -867,7 +873,7 @@ FSTORAGE.commit();
 }
 
 //--------------------------------------------------------------------------------------------
-// Zustand der Gleisversorgung setzten
+// Set Track power state
 void z21Class::setPower(byte state)
 {
   byte data[] = {LAN_X_BC_TRACK_POWER, 0x00};
@@ -899,7 +905,7 @@ void z21Class::setPower(byte state)
 }
 
 //--------------------------------------------------------------------------------------------
-// Abfrage letzte Meldung über Gleispannungszustand
+// Query last message about track power state
 byte z21Class::getPower()
 {
   return Railpower;
@@ -954,12 +960,12 @@ void z21Class::setLocoStateExt(int Adr)
 
   returnLocoStateFull(0, Adr, true);
 
-  // EthSend(0, 15, LAN_X_Header, data, true, Z21bcAll_s | Z21bcNetAll_s);  //Send Loco Status und
-  // Funktions to all active Apps
+  // Send Loco Status and Functions to all active Apps
+  // EthSend(0, 15, LAN_X_Header, data, true, Z21bcAll_s | Z21bcNetAll_s);
 }
 
 //--------------------------------------------------------------------------------------------
-// Gibt aktuellen Lokstatus an Anfragenden Zurück
+// Returns current locomotive status to requester
 void z21Class::returnLocoStateFull(byte client, uint16_t Adr, bool bc)
 // bc = true => to inform also other client over the change.
 // bc = false => just ask about the loco state
@@ -979,18 +985,19 @@ void z21Class::returnLocoStateFull(byte client, uint16_t Adr, bool bc)
   data[0] = LAN_X_LOCO_INFO; // 0xEF X-HEADER
   data[1] = (Adr >> 8) & 0x3F;
   data[2] = Adr & 0xFF;
-  // Fahrstufeninformation: 0=14, 2=28, 4=128
+  // Speed step: 0=14, 2=28, 4=128
   if ((ldata[0] & 0x03) == DCCSTEP14)
     data[3] = 0; // 14 steps
   if ((ldata[0] & 0x03) == DCCSTEP28)
     data[3] = 2; // 28 steps
   if ((ldata[0] & 0x03) == DCCSTEP128)
-    data[3] = 4;            // 128 steps
+    data[3] = 4; // 128 steps
+
   data[3] = data[3] | 0x08; // BUSY!
 
   data[4] = (char)ldata[1];        // DSSS SSSS
   data[5] = (char)ldata[2] & 0x1F; // F0, F4, F3, F2, F1
-  data[6] = (char)ldata[3];        // F5 - F12; Funktion F5 ist bit0 (LSB)
+  data[6] = (char)ldata[3];        // F5 - F12; Function F5 is bit0 (LSB)
   data[7] = (char)ldata[4];        // F13-F20
   data[8] = (char)ldata[5];        // F21-F28
   data[9] = (char)ldata[2] >> 7;   // F31-F29
@@ -1004,7 +1011,7 @@ void z21Class::returnLocoStateFull(byte client, uint16_t Adr, bool bc)
       {
         if (bc == true)
           EthSend(ActIP[i].client, 15, LAN_X_Header, data, true,
-                  Z21bcNone); // Send Loco status und Funktions to BC Apps
+                  Z21bcNone); // Send Loco Status and Functions to BC Apps
       }
     }
     else
@@ -1014,7 +1021,7 @@ void z21Class::returnLocoStateFull(byte client, uint16_t Adr, bool bc)
         data[3] = data[3] & 0b111; // clear busy flag!
       }
       EthSend(client, 15, LAN_X_Header, data, true,
-              Z21bcNone);       // Send Loco status und Funktions to request App
+              Z21bcNone);       // Send Loco Status and Functions to request App
       data[3] = data[3] | 0x08; // BUSY!
     }
   }
@@ -1080,9 +1087,9 @@ void z21Class::setTrntInfo(uint16_t Adr, bool State)
   data[1] = Adr >> 8;           // High
   data[2] = Adr & 0xFF;         // Low
   data[3] = State + 1;
-  //  if (State == true)
-  //    data[3] = 2;
-  //  else data[3] = 1;
+  // if (State == true)
+  //   data[3] = 2;
+  // else data[3] = 1;
   EthSend(0, 0x09, LAN_X_Header, data, true, Z21bcAll_s);
 }
 
@@ -1095,7 +1102,7 @@ void z21Class::setExtACCInfo(uint16_t Adr, byte State, bool Status)
   data[1] = Adr >> 8;                     // High
   data[2] = Adr & 0xFF;                   // Low
   data[3] = State;
-  data[4] = Status; // 0x00 … Data Valid; 0xFF … Data Unknown
+  data[4] = Status; // 0x00 ... Data Valid; 0xFF ... Data Unknown
   EthSend(0, 0x0A, LAN_X_Header, data, true, Z21bcAll_s);
 }
 
@@ -1153,35 +1160,39 @@ void z21Class::sendSystemInfo(byte client, uint16_t maincurrent, uint16_t mainvo
   data[12] = Railpower;         // CentralState
   if (data[12] == csServiceMode)
     data[12] = 0x20;
-  /*Bitmasken für CentralState:
-      #define csEmergencyStop  0x01 // Der Nothalt ist eingeschaltet
-      #define csTrackVoltageOff  0x02 // Die Gleisspannung ist abgeschaltet
-      #define csShortCircuit  0x04 // Kurzschluss
-      #define csProgrammingModeActive 0x20 // Der Programmiermodus ist aktiv
+
+  /* Bitmask for CentralState:
+  #define csNormal          0x00 // Normal Operation Resumed is on
+  #define csEmergencyStop   0x01 // The emergency stop is switched on
+  #define csTrackVoltageOff 0x02 // Track voltage is switched off
+  #define csShortCircuit    0x04 // Short Circuit
+  #define csServiceMode     0x08 // Programming mode is active - Service Mode
   */
   data[13] = 0x00; // CentralStateEx
-  /* Bitmasken für CentralStateEx:
-      #define cseHighTemperature  0x01 // zu hohe Temperatur
-      #define csePowerLost  0x02 // zu geringe Eingangsspannung
-      #define cseShortCircuitExternal 0x04 // am externen Booster-Ausgang
-      #define cseShortCircuitInternal 0x08 // am Hauptgleis oder Programmiergleis
-      #define cseRCN213 0x20 // Weichenadressierung gem. RCN213
+  /* Bitmask CentralStateEx:
+  #define cseHighTemperature      0x01 // Temperature is too high
+  #define csePowerLost            0x02 // Input voltage is too low
+  #define cseShortCircuitExternal 0x04 // S.C. at the external booster output
+  #define cseShortCircuitInternal 0x08 // S.C. at the main track or programming track
+  #define cseRCN213               0x20 // Turnout addresses according to RCN-213
   */
   data[14] = 0x00;                       // reserved
-  data[15] = 0x01;                       // Capabilitie DCC only
+  data[15] = 0x01;                       // Capable of DCC only
   if (FSTORAGE.read(CONF1STORE) == 0x01) // RailCom
-    data[15] |= 0x08;                    // RailCom aktiv!
-  data[15] |= 0x10 | 0x20 | 0x40;        // LAN-Befehle
+    data[15] |= 0x08;                    // RailCom is active!
+  data[15] |= 0x10 | 0x20 | 0x40;        // LAN Commands
+
   /*
-      #define capDCC 0x01 // beherrscht DCC
-      #define capMM 0x02 // beherrscht MM
-      //#define capReserved 0x04 // reserviert für zukünftige Erweiterungen
-      #define capRailCom 0x08 // RailCom ist aktiviert
-      #define capLocoCmds 0x10 // akzeptiert LAN-Befehle für Lokdecoder
-      #define capAccessoryCmds 0x20 // akzeptiert LAN-Befehle für Zubehördecoder
-      #define capDetectorCmds 0x40 // akzeptiert LAN-Befehle für Belegtmelder
-      #define capNeedsUnlockCode 0x80 // benötigt Freischaltcode (z21start)
+  #define capDCC             0x01 // Capable of DCC
+  #define capMM              0x02 // Capable MM
+  #define capReserved        0x04 // reserved for future development
+  #define capRailCom         0x08 // RailCom is activated
+  #define capLocoCmds        0x10 // accepts LAN commands for locomotive decoders
+  #define capAccessoryCmds   0x20 // accepts LAN commands for accessory decoders
+  #define capDetectorCmds    0x40 // accepts LAN commands for detectors
+  #define capNeedsUnlockCode 0x80 // device needs activate code (z21start)
   */
+
   // only to the request client if or if client = 0 to all that select this message (Abo)!
   if (client > 0)
     EthSend(client, 0x14, LAN_SYSTEMSTATE_DATACHANGED, data, false, Z21bcNone);
@@ -1201,15 +1212,16 @@ void z21Class::EthSend(byte client, unsigned int DataLen, unsigned int Header, b
   byte data[DataLen]; // z21 send storage
 
   //--------------------------------------------
-  // XOR bestimmen:
+  // Calculate XOR:
   data[0] = DataLen & 0xFF;
   data[1] = DataLen >> 8;
   data[2] = Header & 0xFF;
   data[3] = Header >> 8;
   data[DataLen - 1] = 0; // XOR
 
+  // Without Length and Header and XOR
   for (byte i = 0; i < (DataLen - 5 + !withXOR); i++)
-  { // Ohne Length und Header und XOR
+  {
     if (withXOR)
       data[DataLen - 1] = data[DataLen - 1] ^ *dataString;
     data[i + 4] = *dataString;
@@ -1239,8 +1251,8 @@ void z21Class::EthSend(byte client, unsigned int DataLen, unsigned int Header, b
     for (byte i = 0; i < z21clientMAX; i++)
     {
       if ((ActIP[i].time > 0) && ((BC & ActIP[i].BCFlag) > 0))
-      { // Boradcast & Noch aktiv
-
+      {
+        // Broadcast & Still Active
         if (BC != 0)
         {
           if (BC == Z21bcAll_s)
@@ -1250,8 +1262,8 @@ void z21Class::EthSend(byte client, unsigned int DataLen, unsigned int Header, b
         }
 
         if ((clientOut != client) || (clientOut == 0))
-        { // wenn client > 0 und nicht Z21bcNone, sende an alle außer den client!
-
+        {
+          // if client > 0 and not Z21bcNone, send to everyone except the client!
           //--------------------------------------------
           if (notifyz21EthSend)
             notifyz21EthSend(clientOut, data);
@@ -1360,7 +1372,7 @@ void z21Class::clearIPSlot(byte client)
 }
 
 //--------------------------------------------------------------------------------------------
-// speichern des BCFlag im EEPROM
+// Storing the BCFlag in the EEPROM
 void z21Class::setEEPROMBCFlag(byte IPHash, byte BCFlag)
 {
   FSTORAGE.FSTORAGEMODE(CLIENTHASHSTORE | IPHash, BCFlag);
@@ -1372,7 +1384,7 @@ void z21Class::setEEPROMBCFlag(byte IPHash, byte BCFlag)
 }
 
 //--------------------------------------------------------------------------------------------
-// lesen des BCFlag im EEPROM
+// Reading the BCFlag in EEPROM
 byte z21Class::findEEPROMBCFlag(byte IPHash)
 {
   uint8_t flag = FSTORAGE.read(CLIENTHASHSTORE | IPHash);
@@ -1381,7 +1393,7 @@ byte z21Class::findEEPROMBCFlag(byte IPHash)
   ZDebug.print("read: ");
   ZDebug.println(flag, BIN);
 #endif
-  // wurde BC im EEPROM bereits erfasst?
+  // Has BC already been recorded in EEPROM?
   if (flag == 0xFF)
     return 0x00; // not found!
   return flag;
@@ -1399,12 +1411,13 @@ byte z21Class::addIPToSlot(byte client, byte BCFlag)
     {
       ActIP[i].time = z21ActTimeIP;
       if (BCFlag != 0)
-      { // Falls BC Flag übertragen wurde diesen hinzufügen!
+      {
+        // If BC flag has been transferred, add it!
         ActIP[i].BCFlag = BCFlag;
         if (notifyz21ClientHash)
           setEEPROMBCFlag(notifyz21ClientHash(client), BCFlag);
       }
-      return ActIP[i].BCFlag; // BC Flag 4. Byte Rückmelden
+      return ActIP[i].BCFlag; // BC Flag 4. Feedback byte
     }
     else if (ActIP[i].time < maxTime)
     {
@@ -1428,7 +1441,7 @@ byte z21Class::addIPToSlot(byte client, byte BCFlag)
   if (notifyz21ClientHash)
     ActIP[Slot].BCFlag = findEEPROMBCFlag(notifyz21ClientHash(client));
 
-  return ActIP[Slot].BCFlag; // BC Flag 4. Byte Rückmelden
+  return ActIP[Slot].BCFlag; // BC Flag 4. Feedback byte
 }
 
 //--------------------------------------------------------------------------------------------
@@ -1439,7 +1452,7 @@ void z21Class::setOtherSlotBusy(byte slot)
   {
     if ((i != slot) && (ActIP[slot].adr == ActIP[i].adr))
     {                   // if in other Slot -> set busy
-      ActIP[i].adr = 0; // clean slot that informed as busy & let it activ
+      ActIP[i].adr = 0; // clean slot that informed as busy & let it active
       // Inform with busy message:
       // not used!
     }
