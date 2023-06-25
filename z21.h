@@ -124,9 +124,10 @@ typedef uint8_t byte;
 #define csServiceMode     0x08 // Programming mode is active - Service Mode
 // Bitmask CentralStateEx:
 #define cseHighTemperature      0x01 // Temperature is too high
-#define csePowerLost            0x02 // Input voltage that is too low
-#define cseShortCircuitExternal 0x04 // At the external booster output
-#define cseShortCircuitInternal 0x08 // On main track or on programming track
+#define csePowerLost            0x02 // Input voltage is too low
+#define cseShortCircuitExternal 0x04 // S.C. at the external booster output
+#define cseShortCircuitInternal 0x08 // S.C. at the main track or programming track
+#define cseRCN213               0x20 // Turnout addresses according to RCN-213
 
 //--------------------------------------------------------------
 #define z21clientMAX  30   // Array size for IP addresses
