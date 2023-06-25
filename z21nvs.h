@@ -14,7 +14,7 @@
 
 #include <Preferences.h>
 
-#define EESize 512 // Größe des EEPROM
+#define EESize 512 // EEPROM size
 
 // library interface description
 class z21nvsClass

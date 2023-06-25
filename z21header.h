@@ -9,10 +9,10 @@
  */
 
 //**************************************************************
-// Z21 LAN Protokoll Spezifikation:
-#define LAN_X_Header                      0x40 // not in Spezifikation!
+// Z21 LAN Protocol Specification:
+#define LAN_X_Header                      0x40 // not in Specification!
 #define LAN_GET_SERIAL_NUMBER             0x10
-#define LAN_GET_CODE                      0x18 // SW Feature-Umfang der Z21
+#define LAN_GET_CODE                      0x18 // SW Feature scope of the Z21
 #define LAN_LOGOFF                        0x30
 #define LAN_X_GET_SETTING                 0x21
 #define LAN_X_BC_TRACK_POWER              0x61
@@ -69,10 +69,10 @@
 #define LAN_X_CV_POM_ACCESSORY_WRITE_BIT  0xE8 // DB3 Option
 #define LAN_X_CV_POM_ACCESSORY_READ_BYTE  0xE4 // DB3 Option
 
-// ab Z21 FW Version 1.23
+// From Z21 FW Version 1.23
 #define LAN_X_MM_WRITE_BYTE 0x24
 
-// ab Z21 FW Version 1.25
+// From Z21 FW Version 1.25
 #define LAN_X_DCC_READ_REGISTER  0x22
 #define LAN_X_DCC_WRITE_REGISTER 0x23
 
@@ -83,36 +83,51 @@
 #define Z21bcAll_s        0b00000001
 #define Z21bcRBus         0x00000002
 #define Z21bcRBus_s       0b00000010
-#define Z21bcRailcom      0x00000004 // RailCom-Daten für Abo Loks
+#define Z21bcRailcom      0x00000004 // RailCom data of subscribed locomotives
 #define Z21bcRailcom_s    0x100
 
 #define Z21bcSystemInfo   0x00000100 // LAN_SYSTEMSTATE_DATACHANGED
 #define Z21bcSystemInfo_s 0b00000100
 
-// ab FW Version 1.20:
-#define Z21bcNetAll \
-  0x00010000 // Alles, auch alle Loks ohne vorher die Lokadresse abonnieren zu müssen (für PC
-             // Steuerung)
+//**************************************************************
+// From FW Version 1.20:
+
+// Everything, including all locomotives,
+// without having to subscribe to the locomotive
+//  address beforehand (for PC control)
+#define Z21bcNetAll   0x00010000
 #define Z21bcNetAll_s 0b00001000
 
-#define Z21bcLocoNet \
-  0x01000000 // LocoNet Meldungen an LAN Client weiterleiten (ohne Loks und Weichen)
-#define Z21bcLocoNet_s      0b00010000
-#define Z21bcLocoNetLocos   0x02000000 // Lok-spezifische LocoNet Meldungen an LAN Client weiterleiten
+// Forwarding LocoNet messages to LAN client (without Locomotives and Switches)
+#define Z21bcLocoNet   0x01000000
+#define Z21bcLocoNet_s 0b00010000
+
+// Forwarding locomotive-specific LocoNet messages to LAN client
+#define Z21bcLocoNetLocos   0x02000000
 #define Z21bcLocoNetLocos_s 0b00110000
-#define Z21bcLocoNetSwitches \
-  0x04000000 // Weichen-spezifische LocoNet Meldungen an LAN Client weiterleiten
+
+// Forwarding switch-specific LocoNet messages to LAN Client
+#define Z21bcLocoNetSwitches   0x04000000
 #define Z21bcLocoNetSwitches_s 0b01010000
 
-// ab FW Version 1.22:
-#define Z21bcLocoNetGBM   0x08000000 // Status-Meldungen von Gleisbesetztmeldern am LocoNet-Bus
+//**************************************************************
+// From FW Version 1.22:
+
+// Status messages from Track Occupancy Detectors on the LocoNet bus
+#define Z21bcLocoNetGBM   0x08000000
 #define Z21bcLocoNetGBM_s 0b10010000
 
-// ab FW Version 1.29:
-#define Z21bcRailComAll \
-  0x00040000 // alles: Änderungen bei RailCom-Daten ohne Lok Abo! -> LAN_RAILCOM_DATACHANGED
+//**************************************************************
+// From FW Version 1.29:
+
+// Everything: Changes to RailCom data without a locomotive subscription! ->
+// LAN_RAILCOM_DATACHANGED
+#define Z21bcRailComAll   0x00040000
 #define Z21bcRailComAll_s 0b10000000
 
-// ab FW Version 1.30:
-#define Z21bcCANDetector   0x00080000 // Meldungen vom Gelisbesetztmeldern am CAN-Bus
+//**************************************************************
+// From FW Version 1.30:
+
+// Messages from the Track Occupancy Detectors on the CAN bus
+#define Z21bcCANDetector   0x00080000
 #define Z21bcCANDetector_s 0b11000000
