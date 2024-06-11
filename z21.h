@@ -85,7 +85,7 @@ typedef uint8_t byte;
 //**************************************************************
 // Firmware Version of the Z21:
 #define z21FWVersionMSB 0x01
-#define z21FWVersionLSB 0x42
+#define z21FWVersionLSB 0x43 // 0x42
 
 /*
 // Hardware Types:

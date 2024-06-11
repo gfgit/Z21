@@ -759,7 +759,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     }
     EthSend(client, 0x0e, 0x12, data, false, Z21bcNone);
 #if defined(SERIALDEBUG)
-    ZDebug.print("Z21 Eins(read) ");
+    ZDebug.print("Z21 Sys(read) ");
     ZDebug.print("RailCom: ");
     ZDebug.print(data[0], HEX);
     ZDebug.print(", PWR-Button: ");
@@ -787,18 +787,24 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
   case (0x13):
   {
     // configuration write
-    // <-- 0e 00 13 00 01 00 01 03 01 00 03 00 00 00
-    // 0x0e = Length; 0x12 = Header
+    // <-- 0e 00 - 13 00 - 01 00 01 03 01 00 03 00 00 00
+    // 0x0e = Length; 0x13 = Header
 
-    /* Daten:
-    (0x01) RailCom: 0=zero/off, 1=one/on
-    (0x00)
-    (0x01) Power button: 0=Track voltage off, 1=Emergency stop
-    (0x03) Readout mode: 0=nothing, 1=Bit, 2=Byte, 3=both
+    /* Data:
+    50: (0x01) RailCom: 0=zero/off, 1=one/on
+    51: (0x00)
+    52: (0x01) Power button: 0=Track voltage off, 1=Emergency stop
+    53: (0x03) Readout mode: 0=nothing, 1=Bit, 2=Byte, 3=both
+    54: (0x01)
+    55: (0x00)
+    56: (0x03)
+    57: (0x00) RCN-213 -> 0x04
+    58: (0x00)
+    59: (0x00)
     */
 
 #if defined(SERIALDEBUG)
-    ZDebug.print("Z21 Eins(write) ");
+    ZDebug.print("Z21 Sys(write) ");
     ZDebug.print("RailCom: ");
     ZDebug.print(packet[4], HEX);
     ZDebug.print(", PWR-Button: ");
@@ -819,6 +825,8 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       ZDebug.print("both");
       break;
     }
+    ZDebug.print(", RCN-213: ");
+    ZDebug.print(packet[11] & 0x04, HEX);
     ZDebug.println();
 #endif
 
@@ -830,11 +838,11 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
 #if defined(ESP32)
     portENTER_CRITICAL(&myMutex);
 #endif
-/*
+
 #if defined(ESP8266) || defined(ESP32)
-FSTORAGE.commit();
+    FSTORAGE.commit();
 #endif
-*/
+
 #if defined(ESP32)
     portEXIT_CRITICAL(&myMutex);
 #endif
@@ -870,6 +878,7 @@ FSTORAGE.commit();
       data[13] = highByte(0x4e20);
       data[12] = lowByte(0x4e20);
     }
+
     // check range of ProgV:
     if ((word(data[15], data[14]) > 0x59D8) || (word(data[15], data[14]) < 0x2A8F))
     {
@@ -879,6 +888,7 @@ FSTORAGE.commit();
     }
 
     EthSend(client, 0x14, 0x16, data, false, Z21bcNone);
+
 #if defined(SERIALDEBUG)
     ZDebug.print("Z21 Eins(read) ");
     ZDebug.print("RstP(s): ");
@@ -899,9 +909,11 @@ FSTORAGE.commit();
   {
     // configuration write
     //<-- 14 00 17 00 19 06 07 01 05 14 88 13 10 27 32 00 50 46 20 4e
+    // v1.42  14 0 17 0 19 6 7 93 93 93 93 1 4 0 12 80 20 4E 20
+    // v1.42  14 0 17 0 19 6 7 93 93 93 93 1 4 0 12 0 20 4E 20 4E
     // 0x14 = Length; 0x16 = Header(read), 0x17 = Header(write)
 
-    /* Daten:
+    /* Data:
     (0x19) Reset Packet (start) (25-255)
     (0x06) Reset Packet (continue) (6-64)
     (0x07) Programming Packet (7-64)
@@ -918,6 +930,25 @@ FSTORAGE.commit();
     (0x46) Main track (MSB)
     (0x20) Prog track (LSB) (11-23V): 20V=0x4e20, 21V=0x5208, 22V=0x55F0
     (0x4e) Prog track (MSB)
+
+    60-4: (0x19) Reset Packet (start) (25-255)
+    61-5: (0x06) Reset Packet (continue) (6-64)
+    62-6: (0x07) Programming Packet (7-64)
+    63-7: (0x01) ?
+    64-8: (0x05) ?
+    65-9: (0x14) ?
+    66-10: (0x88) ?
+    67-11: (0x13) ?
+    68-12: (0x10) ?
+    69-13: (0x27) ?
+    70-14: (0x32) ?
+    71-15: (0x00) 0x03 -> Output format (0x00) DCC+MM, (0x02) DCC only, (0x03) MM only
+                  0x40 -> Repeat DCC function periodically from F13
+                  0x80 -> Short DCC locomotive addresses (0x00 = 1..99 / 0x80 = 1..127)
+    72: (0x50) Main track (LSB) (11-23V)
+    73: (0x46) Main track (MSB)
+    74: (0x20) Prog track (LSB) (11-23V): 20V=0x4e20, 21V=0x5208, 22V=0x55F0
+    75: (0x4e) Prog track (MSB)
     */
 
 #if defined(SERIALDEBUG)
@@ -932,6 +963,26 @@ FSTORAGE.commit();
     ZDebug.print(word(packet[17], packet[16]));
     ZDebug.print(", ProgV: ");
     ZDebug.print(word(packet[19], packet[18]));
+    ZDebug.print(", Output: ");
+    switch (packet[15] & 0x03)
+    {
+    case 0x00:
+      ZDebug.print("DCC+MM");
+      break; // Output format DCC+MM
+    case 0x01:
+      ZDebug.print("error");
+      break;
+    case 0x02:
+      ZDebug.print("DCC");
+      break; // Output format DCC only
+    case 0x03:
+      ZDebug.print("MM");
+      break; // Output format MM only
+    }
+    ZDebug.print(", Rpt >F12: ");
+    ZDebug.print(packet[15] & 0x40, HEX);
+    ZDebug.print(", short.Adr: ");
+    ZDebug.print(packet[15] & 0x80, HEX);
     ZDebug.println();
 #endif
     for (byte i = 0; i < 16; i++)
@@ -939,11 +990,9 @@ FSTORAGE.commit();
       FSTORAGE.FSTORAGEMODE(CONF2STORE + i, packet[4 + i]);
     }
 
-    /*
-    #if defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32)
     FSTORAGE.commit();
-    #endif
-    */
+#endif
 
     // Request DCC to change
     if (notifyz21UpdateConf)
@@ -955,11 +1004,11 @@ FSTORAGE.commit();
   {
 #if defined(SERIALDEBUG)
     ZDebug.print("UNKNOWN_COMMAND");
-    // for (byte i = 0; i < packet[0]; i++)
-    // {
-    //   ZDebug.print(" 0x");
-    //   ZDebug.print(packet[i], HEX);
-    // }
+    for (byte i = 0; i < packet[0]; i++)
+    {
+      ZDebug.print(" 0x");
+      ZDebug.print(packet[i], HEX);
+    }
     ZDebug.println();
 #endif
     data[0] = 0x61;
@@ -1117,7 +1166,7 @@ void z21Class::returnLocoStateFull(byte client, uint16_t Adr, bool bc)
   data[6] = (char)ldata[3];        // F5 - F12; Function F5 is bit0 (LSB)
   data[7] = (char)ldata[4];        // F13-F20
   data[8] = (char)ldata[5];        // F21-F28
-  data[9] = (char)ldata[2] >> 7;   // F31-F29
+  data[9] = (char)ldata[2] >> 5;   // F31-F29
 
   // Info to all:
   for (byte i = 0; i < z21clientMAX; i++)
