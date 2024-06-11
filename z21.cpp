@@ -68,6 +68,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
   switch (header)
   {
   case LAN_GET_SERIAL_NUMBER:
+  {
 #if defined(SERIALDEBUG)
     ZDebug.println("GET_SERIAL_NUMBER");
 #endif
@@ -78,7 +79,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     EthSend(client, 0x08, LAN_GET_SERIAL_NUMBER, data, false,
             Z21bcNone); // Serial number 32 Bit (little endian)
     break;
+  }
   case LAN_GET_HWINFO:
+  {
 #if defined(SERIALDEBUG)
     ZDebug.println("GET_HWINFO");
 #endif
@@ -92,14 +95,19 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     data[7] = 0x00;
     EthSend(client, 0x0C, LAN_GET_HWINFO, data, false, Z21bcNone);
     break;
+  }
   case LAN_LOGOFF:
+  {
 #if defined(SERIALDEBUG)
     ZDebug.println("LOGOFF");
 #endif
     clearIPSlot(client);
     // Response from Z21: none
     break;
-  case LAN_GET_CODE: // SW Feature Scope of the Z21
+  }
+  case LAN_GET_CODE:
+  {
+    // SW Feature Scope of the Z21
 
     /*
     #define Z21_NO_LOCK        0x00 // all features permitted
@@ -110,15 +118,19 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     data[0] = 0x00; // all features permitted
     EthSend(client, 0x05, LAN_GET_CODE, data, false, Z21bcNone);
     break;
+  }
   case (LAN_X_Header):
+  {
     //---------------------- LAN X-Header BEGIN --------------------------
-    switch (packet[4])
-    { // X-Header
+    switch (packet[4]) // X-Header
+    {
     case LAN_X_GET_SETTING:
+    {
       //---------------------- Switch BD0 BEGIN --------------------------
-      switch (packet[5])
-      { // DB0
+      switch (packet[5]) // DB0
+      {
       case 0x21:
+      {
 #if defined(SERIALDEBUG)
         ZDebug.println("X_GET_VERSION");
 #endif
@@ -128,7 +140,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
         data[3] = 0x12;              // Command station ID (0x12 = Z21 device family)
         EthSend(client, 0x09, LAN_X_Header, data, true, Z21bcNone);
         break;
+      }
       case 0x24:
+      {
         data[0] = LAN_X_STATUS_CHANGED; // X-Header: 0x62
         data[1] = 0x22;                 // DB0
         data[2] = Railpower;            // DB1: Status
@@ -140,7 +154,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
         // csServiceMode     0x08 // Programming mode is active - Service Mode
         EthSend(client, 0x08, LAN_X_Header, data, true, Z21bcNone);
         break;
+      }
       case 0x80:
+      {
 #if defined(SERIALDEBUG)
         ZDebug.println("X_SET_TRACK_POWER_OFF");
 
@@ -152,7 +168,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
         if (notifyz21RailPower)
           notifyz21RailPower(csTrackVoltageOff);
         break;
+      }
       case 0x81:
+      {
 #if defined(SERIALDEBUG)
         ZDebug.println("X_SET_TRACK_POWER_ON");
 #endif
@@ -166,16 +184,21 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
 
         break;
       }
+      }
       //---------------------- END Switch DB0 ----------------------------
       break; // END DB0
+    }
     case LAN_X_DCC_READ_REGISTER:
+    {
       if (packet[5] == 0x15)
       { // DB0 - SPECIAL: WLANMaus CV Read!
         if (notifyz21CVREAD)
           notifyz21CVREAD(0, packet[6] - 1); // CV_MSB, CV_LSB
       }
       break;
+    }
     case LAN_X_CV_READ:
+    {
       if (packet[5] == 0x11)
       { // DB0
 #if defined(SERIALDEBUG)
@@ -190,7 +213,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
           notifyz21CVWRITE(0, packet[6] - 1, packet[7]); // CV_MSB, CV_LSB, value
       }
       break;
+    }
     case LAN_X_CV_WRITE:
+    {
       if (packet[5] == 0x12)
       { // DB0
 #if defined(SERIALDEBUG)
@@ -200,6 +225,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
           notifyz21CVWRITE(packet[6], packet[7], packet[8]); // CV_MSB, CV_LSB, value
       }
       break;
+    }
     case LAN_X_CV_POM:
     { // X-Header = 0xE6
       uint16_t CVAdr = ((packet[8] & 0b11) << 8) + packet[9];
@@ -348,13 +374,16 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       break;
     }
     case LAN_X_SET_STOP:
+    {
 #if defined(SERIALDEBUG)
       ZDebug.println("X_SET_STOP");
 #endif
       if (notifyz21RailPower)
         notifyz21RailPower(csEmergencyStop);
       break;
+    }
     case LAN_X_GET_LOCO_INFO:
+    {
       if (packet[5] == 0xF0)
       { // DB0
         // ZDebug.print("X_GET_LOCO_INFO: ");
@@ -362,7 +391,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
         returnLocoStateFull(client, word(packet[6] & 0x3F, packet[7]), false);
       }
       break;
+    }
     case LAN_X_SET_LOCO:
+    {
       // setLocoBusy:
       addBusySlot(client, word(packet[6] & 0x3F, packet[7]));
 
@@ -436,14 +467,18 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       returnLocoStateFull(client, word(packet[6] & 0x3F, packet[7]),
                           true); // Feedback to the LAN clients!
       break;
+    }
     case LAN_X_SET_LOCO_BINARY_STATE:
+    {
       if (packet[5] == 0x5F)
       { // DB0 = Binary State
         if (notifyz21LocoFktExt)
           notifyz21LocoFktExt(word(packet[6] & 0x3F, packet[7]), packet[8], packet[9]);
       }
       break;
+    }
     case LAN_X_GET_FIRMWARE_VERSION:
+    {
 #if defined(SERIALDEBUG)
       ZDebug.println("X_GET_FIRMWARE_VERSION");
 #endif
@@ -453,7 +488,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       data[3] = z21FWVersionLSB; // V_LSB
       EthSend(client, 0x09, LAN_X_Header, data, true, Z21bcNone);
       break;
+    }
     case 0x73:
+    {
 // LAN_X_??? WLANmaus periodic query:
 // 0x09 0x00 0x40 0x00 0x73 0x00 0xFF 0xFF 0x00
 // length    X-Header  XNet-Msg  speed?
@@ -464,7 +501,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       if (addIPToSlot(client, 0x00) == 0)
         addIPToSlot(client, Z21bcAll);
       break;
+    }
     default:
+    {
 #if defined(SERIALDEBUG)
       ZDebug.print("UNKNOWN_LAN-X_COMMAND");
       // for (byte i = 0; i < packet[0]; i++)
@@ -478,8 +517,10 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       data[1] = 0x82;
       EthSend(client, 0x07, LAN_X_Header, data, true, Z21bcNone);
     }
+    }
     //---------------------- END LAN X-Header ----------------------------
     break;
+  }
   case (LAN_SET_BROADCASTFLAGS):
   {
     unsigned long bcflag = packet[7];
@@ -519,6 +560,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     break;
   }
   case (LAN_GET_LOCOMODE):
+  {
     /*
     In the Z21, the output format (DCC, MM) can be stored persistently per locomotive address.
     A maximum of 256 different locomotive addresses can be stored. Every address >= 256
@@ -529,10 +571,14 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     data[2] = 0; // 0=DCC Format; 1=MM Format
     EthSend(client, 0x07, LAN_GET_LOCOMODE, data, false, Z21bcNone);
     break;
+  }
   case (LAN_SET_LOCOMODE):
+  {
     // nothing to reply all DCC Format
     break;
+  }
   case (LAN_GET_TURNOUTMODE):
+  {
     /*
     In the Z21, the output format (DCC, MM) can be stored persistently per function decoder address.
     A maximum of 256 different function decoder addresses can be stored. Every Address >= 256
@@ -543,10 +589,14 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     data[2] = 0; // 0=DCC Format; 1=MM Format
     EthSend(client, 0x07, LAN_GET_LOCOMODE, data, false, Z21bcNone);
     break;
+  }
   case (LAN_SET_TURNOUTMODE):
+  {
     // nothing to reply all DCC Format
     break;
+  }
   case (LAN_RMBUS_GETDATA):
+  {
     if (notifyz21S88Data)
     {
 #if defined(SERIALDEBUG)
@@ -557,10 +607,14 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
                                    // (Answer goes to everyone here!)
     }
     break;
+  }
   case (LAN_RMBUS_PROGRAMMODULE):
+  {
     break;
+  }
   case (LAN_SYSTEMSTATE_GETDATA):
-  { // System state
+  {
+    // System state
 #if defined(SERIALDEBUG)
     ZDebug.println("LAN_SYS-State");
 #endif
@@ -631,6 +685,7 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     break;
   }
   case (LAN_LOCONET_DETECTOR):
+  {
     if (notifyz21LNdetector)
     {
 #if defined(SERIALDEBUG)
@@ -640,7 +695,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
                           word(packet[6], packet[5])); // Request Type & Report Address
     }
     break;
+  }
   case (LAN_CAN_DETECTOR):
+  {
     if (notifyz21CANdetector)
     {
 #if defined(SERIALDEBUG)
@@ -649,7 +706,9 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       notifyz21CANdetector(client, packet[4], word(packet[6], packet[5])); // Request Type & CAN-ID
     }
     break;
+  }
   case (0x12): // configuration read
+  {
     // <-- 04 00 12 00
     // 0e 00 12 00 01 00 01 03 01 00 03 00 00 00
     for (byte i = 0; i < 10; i++)
@@ -682,16 +741,20 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
     ZDebug.println();
 #endif
     break;
+  }
   case (0x13):
-  { // configuration write
-//<-- 0e 00 13 00 01 00 01 03 01 00 03 00 00 00
-// 0x0e = Length; 0x12 = Header
-/* Daten:
-(0x01) RailCom: 0=aus/off, 1=ein/on
-(0x00)
-(0x01) Power-Button: 0=Gleisspannung aus, 1=Nothalt
-(0x03) Auslese-Modus: 0=Nichts, 1=Bit, 2=Byte, 3=Beides
-*/
+  {
+    // configuration write
+    //<-- 0e 00 13 00 01 00 01 03 01 00 03 00 00 00
+    // 0x0e = Length; 0x12 = Header
+
+    /* Daten:
+    (0x01) RailCom: 0=aus/off, 1=ein/on
+    (0x00)
+    (0x01) Power-Button: 0=Gleisspannung aus, 1=Nothalt
+    (0x03) Auslese-Modus: 0=Nichts, 1=Bit, 2=Byte, 3=Beides
+    */
+
 #if defined(SERIALDEBUG)
     ZDebug.print("Z21 Eins(write) ");
     ZDebug.print("RailCom: ");
@@ -739,9 +802,11 @@ FSTORAGE.commit();
       notifyz21UpdateConf();
     break;
   }
-  case (0x16): // configuration read
-               //<-- 04 00 16 00
-               // 14 00 16 00 19 06 07 01 05 14 88 13 10 27 32 00 50 46 20 4e
+  case (0x16):
+  {
+    // configuration read
+    //<-- 04 00 16 00
+    // 14 00 16 00 19 06 07 01 05 14 88 13 10 27 32 00 50 46 20 4e
 
 #if defined(ESP32)
     portENTER_CRITICAL(&myMutex);
@@ -787,10 +852,13 @@ FSTORAGE.commit();
     ZDebug.println();
 #endif
     break;
+  }
   case (0x17):
-  { // configuration write
-//<-- 14 00 17 00 19 06 07 01 05 14 88 13 10 27 32 00 50 46 20 4e
-// 0x14 = Length; 0x16 = Header(read), 0x17 = Header(write)
+  {
+    // configuration write
+    //<-- 14 00 17 00 19 06 07 01 05 14 88 13 10 27 32 00 50 46 20 4e
+    // 0x14 = Length; 0x16 = Header(read), 0x17 = Header(write)
+
 /* Daten:
 (0x19) Reset Packet (starten) (25-255)
 (0x06) Reset Packet (fortsetzen) (6-64)
@@ -809,6 +877,7 @@ FSTORAGE.commit();
 (0x20) Programmiergleis (LSB) (11-23V): 20V=0x4e20, 21V=0x5208, 22V=0x55F0
 (0x4e) Programmiergleis (MSB)
 */
+
 #if defined(SERIALDEBUG)
     ZDebug.print("Z21 Eins(write) ");
     ZDebug.print("RstP(s): ");
@@ -838,6 +907,7 @@ FSTORAGE.commit();
     break;
   }
   default:
+  {
 #if defined(SERIALDEBUG)
     ZDebug.print("UNKNOWN_COMMAND");
     // for (byte i = 0; i < packet[0]; i++)
@@ -850,6 +920,7 @@ FSTORAGE.commit();
     data[0] = 0x61;
     data[1] = 0x82;
     EthSend(client, 0x07, LAN_X_Header, data, true, Z21bcNone);
+  }
   }
   //---------------------------------------------------------------------------------------
   // check if IP is still used:
