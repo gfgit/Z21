@@ -5,6 +5,8 @@ IndentWidth: '2'
 
 ColumnLimit: 100
 
+UseTab: Never
+
 # We want a space between the type and the star for pointer types.
 PointerBindsToType: false
 
