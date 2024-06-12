@@ -159,12 +159,12 @@ void z21Class::receive(uint8_t client, uint8_t *packet)
       {
 #if defined(SERIALDEBUG)
         ZDebug.println("X_SET_TRACK_POWER_OFF");
+#endif
 
         data[0] = LAN_X_BC_TRACK_POWER;
         data[1] = 0x00;
         EthSend(client, 0x07, LAN_X_Header, data, true, Z21bcNone);
 
-#endif
         if (notifyz21RailPower)
           notifyz21RailPower(csTrackVoltageOff);
         break;
